@@ -1,14 +1,8 @@
 import cv2
 import numpy as np
 
-def find_subtitle_box(image_path):
-    # 1. Load the image
-    img = cv2.imread(image_path)
-    if img is None:
-        print("Error: Could not load image.")
-        return
+def frame_change(img) :
 
-    
     height, width, _ = img.shape
     
     
@@ -16,7 +10,9 @@ def find_subtitle_box(image_path):
 
     
     
-    _, thresh = cv2.threshold(gray, 254, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY)
+
+   
     
     kernel = np.ones((3, 60), np.uint8) 
     dilated = cv2.dilate(thresh, kernel, iterations=1) 
@@ -51,9 +47,57 @@ def find_subtitle_box(image_path):
     mask = cv2.dilate(mask, merge_kernel, iterations=2)
     clean_img = cv2.inpaint(img, mask, 3, cv2.INPAINT_NS)
     
-    cv2.imshow("Original with Box", clean_img)
-    cv2.waitKey(0)
+    # cv2.imshow("Original with Box", clean_img)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    return clean_img
+
+def remove_subtitle(input_file, output_file):
+    # Open input video
+    cap = cv2.VideoCapture(input_file)
+    
+    # Get video properties
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    # Create video writer
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_file, fourcc, fps, (width, height))
+    
+    frame_count = 0
+    
+    while True:
+        ret, frame = cap.read()
+        
+        if not ret:
+            break
+
+        clean_img=frame_change(frame)
+
+        # Display frame
+        cv2.imshow('Video', clean_img)
+        
+        # Write frame to output
+        out.write(clean_img)
+        
+        frame_count += 1
+        
+        # Break loop if 'q' is pressed
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
+    
+    # Clean up
+    cap.release()
+    out.release()
     cv2.destroyAllWindows()
+    
+    print(f"Processed {frame_count} frames")
+    print(f"Output saved to {output_file}")
 
+# Usage
+input_video = "Input_video.mp4"
+output_video = "Output_video.mp4"
 
-find_subtitle_box('input_image1.png')
+remove_subtitle(input_video, output_video)
+
